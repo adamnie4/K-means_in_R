@@ -1,0 +1,137 @@
+library(ggplot2) 
+library(gridExtra)
+library(corrplot)
+library(stats)
+library(factoextra)
+
+
+df <- read.csv('Country-data.csv')
+doc <- read.csv('data-dictionary.csv')
+
+df <- df[,c('gdpp','health','life_expec')]
+df1 <- df[,c('gdpp','health','life_expec')]
+#histogramy zmiennych
+
+plot1 <- ggplot2::ggplot(data=df, aes(x=gdpp)) +
+  geom_histogram(aes(y=..density..), col = "white", fill = "steelblue2") +
+  geom_density(color = "dodgerblue4", size = 1.1) +
+  labs(title = 'Rozkład zmiennej gdpp',
+       x = 'gdpp') +
+  
+  theme_light() +
+  theme(plot.title = element_text(size=16, hjust=0.5),
+        axis.title.x = element_text(size=14, face="italic"),
+        axis.title.y = element_text(size=14, face="italic"),
+        axis.text.x = element_text(size=12),
+        axis.text.y = element_text(size=12),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank()
+  )
+
+plot2 <- ggplot2::ggplot(data=df, aes(x=health)) +
+  geom_histogram(aes(y=..density..), col = "white", fill = "steelblue2") +
+  geom_density(color = "dodgerblue4", size = 1.1) +
+  labs(title = 'Rozkład zmiennej health',
+       x = 'health') +
+  
+  theme_light() +
+  theme(plot.title = element_text(size=16, hjust=0.5),
+        axis.title.x = element_text(size=14, face="italic"),
+        axis.title.y = element_text(size=14, face="italic"),
+        axis.text.x = element_text(size=12),
+        axis.text.y = element_text(size=12),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank()
+  )
+
+plot3 <- ggplot2::ggplot(data=df, aes(x=life_expec)) +
+  geom_histogram(aes(y=..density..), col = "white", fill = "steelblue2") +
+  geom_density(color = "dodgerblue4", size = 1.1) +
+  labs(title = 'Rozkład zmiennej life_expec',
+       x = 'life_expec') +
+  
+  theme_light() +
+  theme(plot.title = element_text(size=16, hjust=0.5),
+        axis.title.x = element_text(size=14, face="italic"),
+        axis.title.y = element_text(size=14, face="italic"),
+        axis.text.x = element_text(size=12),
+        axis.text.y = element_text(size=12),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank()
+  )
+
+gridExtra::grid.arrange(plot1, plot2, plot3, ncol=3, nrow=1)
+
+#standaryzacja
+
+df$health <- log(df$health)
+health_mean <- mean(df$health)
+sd_health <- sd(df$health)
+df1$health <- (df$health - health_mean)/sd_health
+
+df$gdpp <- log(df$gdpp)
+cm_mean <- mean(df$gdpp)
+cm_sd <- sd(df$gdpp)
+df1$gdpp <-(df$gdpp - cm_mean)/cm_sd
+
+df$life_expec <- log(df$life_expec)
+le_mean <- mean(df$life_expec)
+le_sd <- sd(df$life_expec)
+df1$life_expec <- (df$life_expec - le_mean)/le_sd
+
+
+#scater 
+
+f_scatterplot <- function(zbior, x, y){
+  
+  ggplot2::ggplot(data=zbior, aes(y=zbior[,y], x=zbior[,x])) +
+    geom_point(col = "steelblue2") +
+    geom_smooth(method=lm, color="steelblue2") +
+    labs(y=colnames(zbior[y]),
+         x=colnames(zbior[x])) +
+    theme_light() +
+    theme(plot.title = element_text(size=16, hjust=0.5),
+          axis.title.x = element_text(size=14, face="italic"),
+          axis.title.y = element_text(size=14, face="italic"),
+          axis.text.x = element_text(size=12),
+          axis.text.y = element_text(size=12)
+    )
+  
+}
+
+gridExtra::grid.arrange(ncol=3, nrow=3,
+                        f_scatterplot(zbior=df, x=1, y=1), f_scatterplot(zbior=df, x=2, y=1), f_scatterplot(zbior=df, x=3, y=1),
+                        f_scatterplot(zbior=df, x=1, y=2), f_scatterplot(zbior=df, x=2, y=2), f_scatterplot(zbior=df, x=3, y=2),
+                        f_scatterplot(zbior=df, x=1, y=3), f_scatterplot(zbior=df, x=2, y=3), f_scatterplot(zbior=df, x=3, y=3)
+)
+
+
+#korelacje
+
+cor_df <- cor(df1)
+cor_df_p <-cor.mtest(df1, conf.level = 0.95)
+corrplot(cor_df, method = 'square', p.mat = cor_df_p$p, addCoef.col ='black', number.cex = 0.8, order = 'AOE')
+
+#model
+
+X1 <- df1[, c("gdpp", "life_expec")]
+
+factoextra::fviz_nbclust( 
+  x = X1,
+  method = "wss", 
+  FUNcluster = kmeans)  +
+  geom_vline(xintercept = 4, linetype = 2)
+model_seg <- stats::kmeans(x = X1, 
+                           centers = 4,
+                           iter.max = 4,
+                           nstart = 10  
+)
+str(model_seg)
+model_seg
+factoextra::fviz_cluster(object = model_seg, 
+                         data = X1, 
+                         geom = "point", 
+                         stand = F, 
+                         show.clust.cent = T 
+) +
+  theme_light()
